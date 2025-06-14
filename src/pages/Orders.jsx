@@ -14,10 +14,18 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  TextField,
   Grid,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { collection, getDocs, orderBy, query, Timestamp, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import dayjs from "dayjs";
 
@@ -25,6 +33,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   const currentMonth = new Date().toLocaleString("vi-VN", {
     month: "long",
@@ -34,7 +43,9 @@ export default function Orders() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const startOfMonth = Timestamp.fromDate(new Date(dayjs().startOf("month").toDate()));
+        const startOfMonth = Timestamp.fromDate(
+          new Date(dayjs().startOf("month").toDate())
+        );
         const q = query(
           collection(db, "orders"),
           where("createdAt", ">=", startOfMonth),
@@ -64,15 +75,32 @@ export default function Orders() {
     );
   }
 
+  const filteredOrders = orders.filter((order) => {
+    const keyword = searchKeyword.toLowerCase();
+    return (
+      order.buyerName?.toLowerCase().includes(keyword) ||
+      order.phone?.toLowerCase().includes(keyword)
+    );
+  });
+
   return (
     <Box p={2}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         Đơn hàng {currentMonth}
       </Typography>
+      <TextField
+        label="Tìm theo tên hoặc số điện thoại"
+        variant="outlined"
+        fullWidth
+        size="small"
+        margin="normal"
+        value={searchKeyword}
+        onChange={(e) => setSearchKeyword(e.target.value)}
+      />
 
       <Paper elevation={2}>
         <List>
-          {orders.map((order, index) => (
+          {filteredOrders.map((order, index) => (
             <React.Fragment key={order.id}>
               <ListItem
                 alignItems="flex-start"
@@ -98,7 +126,8 @@ export default function Orders() {
                         ₫
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Thanh toán: {order.paymentMethod} | NV: {order.staffName}
+                        Thanh toán: {order.paymentMethod} | NV:{" "}
+                        {order.staffName}
                       </Typography>
                     </>
                   }
@@ -125,10 +154,11 @@ export default function Orders() {
                 Khách hàng: {selectedOrder.buyerName} | {selectedOrder.phone}
               </Typography>
               <Typography variant="body2" color="text.secondary" mb={2}>
-                👤 Nhân viên bán hàng: <strong>{selectedOrder.staffName}</strong>
+                👤 Nhân viên bán hàng:{" "}
+                <strong>{selectedOrder.staffName}</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                🕒 Ngày tạo đơn: {" "}
+                🕒 Ngày tạo đơn:{" "}
                 {selectedOrder.createdAt?.toDate().toLocaleString("vi-VN", {
                   day: "2-digit",
                   month: "2-digit",
@@ -138,9 +168,16 @@ export default function Orders() {
                 })}
               </Typography>
               <Typography>Địa chỉ: {selectedOrder.address}</Typography>
-              <Typography>Email: {selectedOrder.email || "Không có"}</Typography>
+              <Typography>
+                Số điện thoại: {selectedOrder.phone || "Không có"}
+              </Typography>
+              <Typography>
+                Email: {selectedOrder.email || "Không có"}
+              </Typography>
               <Typography>Thanh toán: {selectedOrder.paymentMethod}</Typography>
-              {selectedOrder.note && <Typography>Ghi chú: {selectedOrder.note}</Typography>}
+              {selectedOrder.note && (
+                <Typography>Ghi chú: {selectedOrder.note}</Typography>
+              )}
               <Typography mt={2} fontWeight="bold">
                 Danh sách sản phẩm:
               </Typography>
@@ -176,6 +213,9 @@ export default function Orders() {
                             </Typography>
                             <Typography>
                               Giá: {p.price.toLocaleString("vi-VN")}₫
+                            </Typography>
+                            <Typography>
+                              IMEI: {p.imeiNumber ? p.imeiNumber : "không có"}
                             </Typography>
                           </Box>
                         </Box>
