@@ -37,26 +37,58 @@ export default function ProductDialog({
   viewOnly = false,
 }) {
   const [showDetails, setShowDetails] = useState(viewOnly);
+  const storageOptions = ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"];
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        {viewOnly ? "Chi tiết sản phẩm" : editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
+        {viewOnly
+          ? "Chi tiết sản phẩm"
+          : editingProduct
+          ? "Chỉnh sửa sản phẩm"
+          : "Thêm sản phẩm"}
       </DialogTitle>
       {showDetails ? (
         <DialogContent dividers>
           <Box>
-            <Typography><strong>Hãng:</strong> {editingProduct?.brand}</Typography>
-            <Typography><strong>IMEI:</strong> {editingProduct?.imeiNumber}</Typography>
-            <Typography><strong>Dòng:</strong> {categories.find(c => c.id === editingProduct?.categoryId)?.name}</Typography>
-            <Typography><strong>Màu:</strong> {editingProduct?.color}</Typography>
-            <Typography><strong>Bộ nhớ:</strong> {editingProduct?.storage}</Typography>
-            <Typography><strong>Pin:</strong> {editingProduct?.battery}%</Typography>
-            <Typography><strong>Giá mua:</strong> {editingProduct?.buyingPrice} ₫</Typography>
-            <Typography><strong>Giá bán:</strong> {editingProduct?.sellingPrice} ₫</Typography>
-            <Typography><strong>Tình trạng:</strong> {editingProduct?.status}</Typography>
-            <Typography><strong>Ghi chú:</strong> {editingProduct?.note}</Typography>
-            <Typography><strong>Ngày tạo:</strong> {editingProduct?.createdAt?.toDate?.().toLocaleString?.()}</Typography>
+            <Typography>
+              <strong>Hãng:</strong> {editingProduct?.brand}
+            </Typography>
+            <Typography>
+              <strong>IMEI:</strong> {editingProduct?.imeiNumber}
+            </Typography>
+            <Typography>
+              <strong>Dòng:</strong>{" "}
+              {
+                categories.find((c) => c.id === editingProduct?.categoryId)
+                  ?.name
+              }
+            </Typography>
+            <Typography>
+              <strong>Màu:</strong> {editingProduct?.color}
+            </Typography>
+            <Typography>
+              <strong>Bộ nhớ:</strong> {editingProduct?.storage}
+            </Typography>
+            <Typography>
+              <strong>Pin:</strong> {editingProduct?.battery}%
+            </Typography>
+            <Typography>
+              <strong>Giá mua:</strong> {editingProduct?.buyingPrice} ₫
+            </Typography>
+            <Typography>
+              <strong>Giá bán:</strong> {editingProduct?.sellingPrice} ₫
+            </Typography>
+            <Typography>
+              <strong>Tình trạng:</strong> {editingProduct?.status}
+            </Typography>
+            <Typography>
+              <strong>Ghi chú:</strong> {editingProduct?.note}
+            </Typography>
+            <Typography>
+              <strong>Ngày tạo:</strong>{" "}
+              {editingProduct?.createdAt?.toDate?.().toLocaleString?.()}
+            </Typography>
           </Box>
           <DialogActions>
             <Button onClick={onClose}>Đóng</Button>
@@ -150,8 +182,15 @@ export default function ProductDialog({
                   name="storage"
                   label="Bộ nhớ"
                   fullWidth
+                  select
                   margin="dense"
-                />
+                >
+                  {storageOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Field>
                 <Field
                   component={TextField}
                   name="battery"
@@ -217,7 +256,6 @@ export default function ProductDialog({
                 <Button type="submit" variant="contained">
                   {editingProduct ? "Cập nhật" : "Thêm"}
                 </Button>
-                
               </DialogActions>
             </Form>
           )}
