@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  ListItem,
-  IconButton,
-  Grid,
-} from "@mui/material";
+import { Box, Typography, ListItem, IconButton, Grid } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/firebase"; // đường dẫn đến firestore
 
-export default function ProductListItem({ item, handleDelete, handleEdit }) {
+export default function ProductListItem({
+  item,
+  handleDelete,
+  handleEdit,
+  category,
+}) {
   const [categoryName, setCategoryName] = useState("");
 
   useEffect(() => {
@@ -33,23 +32,25 @@ export default function ProductListItem({ item, handleDelete, handleEdit }) {
       alignItems="flex-start"
       sx={{ borderBottom: "1px solid #eee", py: 2 }}
       secondaryAction={
-        <Box>
-          <IconButton
-            sx={{ mr: 1 }}
-            edge="end"
-            onClick={() => handleDelete(item.id)}
-            color="error"
-          >
-            <DeleteIcon />
-          </IconButton>
-          <IconButton
-            edge="end"
-            color="primary"
-            onClick={() => handleEdit(item)}
-          >
-            <EditIcon />
-          </IconButton>
-        </Box>
+        category ? null : (
+          <Box>
+            <IconButton
+              sx={{ mr: 1 }}
+              edge="end"
+              onClick={() => handleDelete(item.id)}
+              color="error"
+            >
+              <DeleteIcon />
+            </IconButton>
+            <IconButton
+              edge="end"
+              color="primary"
+              onClick={() => handleEdit(item)}
+            >
+              <EditIcon />
+            </IconButton>
+          </Box>
+        )
       }
     >
       <Grid container spacing={2} alignItems="center">
@@ -69,7 +70,7 @@ export default function ProductListItem({ item, handleDelete, handleEdit }) {
         </Grid>
         <Grid item xs>
           <Typography variant="subtitle1" fontWeight="bold">
-            {item.brand} {item.storage} - {item.color}
+            {item.brand} {item.storage} - {item.color} - IMEI: {item.imeiNumber}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Pin: {item.battery}% | Giá bán: {item.sellingPrice}₫ | Tình trạng:{" "}

@@ -23,6 +23,8 @@ import {
   query,
   where,
   Timestamp,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import dayjs from "dayjs";
@@ -37,6 +39,9 @@ export default function DashboardScreen() {
     ordersPerMonth: Array(12).fill(0),
     salesPerMonth: Array(12).fill(0),
     totalRevenueThisYear: 0,
+    totalRevenueThisMonth: 0,
+    topCategoriesMonth: {},
+    topCategoriesYear: {},
   });
 
   useEffect(() => {
@@ -57,11 +62,38 @@ export default function DashboardScreen() {
       );
 
       const salesCount = {};
-      orderSnap.forEach((doc) => {
-        const staff = doc.data().staffName || "Không rõ";
-        salesCount[staff] =
-          (salesCount[staff] || 0) + doc.data().products.length;
-      });
+      const categoryCountMonth = {};
+      let totalRevenueThisMonth = 0;
+
+      for (const docItem of orderSnap.docs) {
+        const data = docItem.data();
+        const staff = data.staffName || "Không rõ";
+        salesCount[staff] = (salesCount[staff] || 0) + data.products.length;
+
+        const products = data.products || [];
+        totalRevenueThisMonth += products.reduce(
+          (sum, p) => sum + (p.price || 0),
+          0
+        );
+
+        for (const p of products) {
+          const categoryId = p.categoryId || "Không rõ";
+          if (!categoryCountMonth[categoryId]) {
+            const categoryRef = doc(db, "categories", categoryId);
+            const categorySnap = await getDoc(categoryRef);
+            if (categorySnap.exists()) {
+              const catData = categorySnap.data();
+              categoryCountMonth[categoryId] = {
+                name: catData.name || "Không rõ",
+                imageUrl: catData.imageUrl || "",
+                sold: 1,
+              };
+            }
+          } else {
+            categoryCountMonth[categoryId].sold++;
+          }
+        }
+      }
 
       const allOrderSnap = await getDocs(
         query(collection(db, "orders"), where("createdAt", ">=", startOfYear))
@@ -70,9 +102,10 @@ export default function DashboardScreen() {
       const ordersPerMonth = Array(12).fill(0);
       const salesPerMonth = Array(12).fill(0);
       let totalRevenueThisYear = 0;
+      const categoryCountYear = {};
 
-      allOrderSnap.forEach((doc) => {
-        const data = doc.data();
+      for (const docItem of allOrderSnap.docs) {
+        const data = docItem.data();
         const createdAt = data.createdAt?.toDate();
         const month = dayjs(createdAt).month();
 
@@ -82,7 +115,25 @@ export default function DashboardScreen() {
 
         ordersPerMonth[month]++;
         salesPerMonth[month] += products.length;
-      });
+
+        for (const p of products) {
+          const categoryId = p.categoryId || "Không rõ";
+          if (!categoryCountYear[categoryId]) {
+            const categoryRef = doc(db, "categories", categoryId);
+            const categorySnap = await getDoc(categoryRef);
+            if (categorySnap.exists()) {
+              const catData = categorySnap.data();
+              categoryCountYear[categoryId] = {
+                name: catData.name || "Không rõ",
+                imageUrl: catData.imageUrl || "",
+                sold: 1,
+              };
+            }
+          } else {
+            categoryCountYear[categoryId].sold++;
+          }
+        }
+      }
 
       setStats({
         productsThisMonth: productSnap.size,
@@ -91,6 +142,9 @@ export default function DashboardScreen() {
         ordersPerMonth,
         salesPerMonth,
         totalRevenueThisYear,
+        totalRevenueThisMonth,
+        topCategoriesMonth: categoryCountMonth,
+        topCategoriesYear: categoryCountYear,
       });
     };
 
@@ -134,13 +188,35 @@ export default function DashboardScreen() {
     ],
   };
 
+  const renderTopCategories = (data, title) => (
+    <Box mt={3}>
+      <Typography variant="subtitle1" gutterBottom>
+        {title}
+      </Typography>
+      {Object.entries(data)
+        .sort((a, b) => b[1].sold - a[1].sold)
+        .slice(0, 5)
+        .map(([id, category]) => (
+          <Box key={id} display="flex" alignItems="center" gap={2} mb={1}>
+            <img
+              src={category.imageUrl}
+              alt={category.name}
+              width={40}
+              height={40}
+              style={{ borderRadius: 8, objectFit: "cover" }}
+            />
+            <Typography>
+              {category.name}: <strong>{category.sold}</strong>
+            </Typography>
+          </Box>
+        ))}
+    </Box>
+  );
+
   return (
-    <Box p={4} >
-      <Grid container spacing={3} sx={{
-        width: '100%'
-      }}>
-        {/* Cột trái: thống kê tháng + biểu đồ */}
-        <Grid item xs={12} size={9}>
+    <Box p={4}>
+      <Grid container spacing={3} sx={{ width: "100%" }}>
+        <Grid item xs={12} md={9}>
           <Box mb={3}>
             <Typography variant="h5" gutterBottom>
               📊 Thống kê tháng này
@@ -189,45 +265,30 @@ export default function DashboardScreen() {
             </Grid>
           </Box>
 
-          {/* Thống kê năm nay */}
-          <Box mt={5} 
-            sx={{
-              width: '100%',
-            }}
-          >
+          <Box mt={5} sx={{ width: "100%" }}>
             <Typography variant="h5" gutterBottom>
               📆 Thống kê năm nay
             </Typography>
-
             <Grid container spacing={3}>
-              {/* === BIỂU ĐỒ 1: ĐƠN HÀNG === */}
-              <Grid item xs={12} md={12} size={6}>
+              <Grid item xs={12} md={6}>
                 <Paper elevation={4} sx={{ p: 3, height: 480 }}>
-                  {" "}
-                  {/* tăng height */}
                   <Typography variant="subtitle1" gutterBottom>
                     📈 Đơn hàng theo tháng
                   </Typography>
-                  {/* bọc trong Box để chiếm hết chiều cao Paper */}
                   <Box sx={{ height: "100%" }}>
                     <Bar
                       data={ordersChartData}
-                      height={420} /* cao hơn */
-                      options={{
-                        maintainAspectRatio: false,
-                      }} /* dùng full height */
+                      height={420}
+                      options={{ maintainAspectRatio: false }}
                     />
                   </Box>
                 </Paper>
               </Grid>
-
-              {/* === BIỂU ĐỒ 2: SẢN PHẨM BÁN === */}
-              <Grid item xs={12} md={12} size={6}>
+              <Grid item xs={12} md={6}>
                 <Paper elevation={4} sx={{ p: 3, height: 480 }}>
                   <Typography variant="subtitle1" gutterBottom>
                     📦 Sản phẩm bán theo tháng
                   </Typography>
-
                   <Box sx={{ height: "100%" }}>
                     <Bar
                       data={salesChartData}
@@ -241,18 +302,37 @@ export default function DashboardScreen() {
           </Box>
         </Grid>
 
-        {/* Cột phải: Tổng doanh thu */}
-        <Grid item xs={12} size={3}>
+        <Grid
+          item
+          xs={12}
+          md={3}
+          spacing={5}
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "space-between",
+          }}
+        >
           <Card
             elevation={6}
-            sx={{
-              p: 4,
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              textAlign: "center",
-            }}
+            sx={{ p: 4, mb: 4, textAlign: "center", height: "100%" }}
+          >
+            <Typography variant="h5" gutterBottom>
+              💰 Tổng doanh thu tháng {dayjs().month() + 1}
+            </Typography>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h3" color="primary">
+              {stats.totalRevenueThisMonth.toLocaleString("vi-VN")} ₫
+            </Typography>
+            {renderTopCategories(
+              stats.topCategoriesMonth,
+              "🔥 Dòng sản phẩm bán chạy tháng này"
+            )}
+          </Card>
+
+          <Card
+            elevation={6}
+            sx={{ p: 4, textAlign: "center", height: "100%", ml: 5 }}
           >
             <Typography variant="h5" gutterBottom>
               💰 Tổng doanh thu năm
@@ -261,6 +341,10 @@ export default function DashboardScreen() {
             <Typography variant="h3" color="secondary">
               {stats.totalRevenueThisYear.toLocaleString("vi-VN")} ₫
             </Typography>
+            {renderTopCategories(
+              stats.topCategoriesYear,
+              "🏆 Dòng sản phẩm bán chạy trong năm"
+            )}
           </Card>
         </Grid>
       </Grid>

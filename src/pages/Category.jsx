@@ -63,6 +63,7 @@ export default function Category() {
       await addDoc(categoriesRef, {
         name,
         imageUrl: publicUrl,
+        sold: 0
       });
 
       setName("");
@@ -204,7 +205,7 @@ export default function Category() {
             <Typography>Không có sản phẩm nào thuộc dòng này.</Typography>
           ) : (
             categoryProducts.map((product) => (
-              <ProductListItem item={product}/>
+              <ProductListItem item={product} category={true}/>
             ))
           )}
         </DialogContent>
