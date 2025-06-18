@@ -66,6 +66,16 @@ export default function ProductList({ products, handleDelete, handleEdit }) {
               <Typography variant="subtitle1" fontWeight="bold">
                 💸 Tổng tiền bán ra: {totalSelling.toLocaleString("vi-VN")}₫
               </Typography>
+              <Typography variant="subtitle2" fontWeight="bold" color="green">
+                ✅ Lợi nhuận:{" "}
+                {selling
+                  .reduce(
+                    (sum, item) => sum + (item.sellingPrice - item.buyingPrice),
+                    0
+                  )
+                  .toLocaleString("vi-VN")}
+                ₫
+              </Typography>
             </Box>
           </Paper>
         </>
