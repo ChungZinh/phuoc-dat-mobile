@@ -18,16 +18,25 @@ import {
   Grid,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import DeleteIcon from "@mui/icons-material/Delete";
 import {
   collection,
   getDocs,
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   where,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import dayjs from "dayjs";
+
+// ... (import không đổi)
+import EditIcon from "@mui/icons-material/Edit";
+
+// ... (component Orders bắt đầu)
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -35,45 +44,83 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState("");
 
+  const [editValues, setEditValues] = useState({
+    buyerName: "",
+    phone: "",
+    address: "",
+    note: "",
+  });
+
   const currentMonth = new Date().toLocaleString("vi-VN", {
     month: "long",
     year: "numeric",
   });
 
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const startOfMonth = Timestamp.fromDate(
-          new Date(dayjs().startOf("month").toDate())
-        );
-        const q = query(
-          collection(db, "orders"),
-          where("createdAt", ">=", startOfMonth),
-          orderBy("createdAt", "desc")
-        );
-        const querySnapshot = await getDocs(q);
-        const result = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(result);
-      } catch (error) {
-        console.error("Lỗi khi tải đơn hàng:", error);
-      } finally {
-        setLoading(false);
-      }
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const startOfMonth = Timestamp.fromDate(
+        new Date(dayjs().startOf("month").toDate())
+      );
+      const q = query(
+        collection(db, "orders"),
+        where("createdAt", ">=", startOfMonth),
+        orderBy("createdAt", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const result = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setOrders(result);
+    } catch (error) {
+      console.error("Lỗi khi tải đơn hàng:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchOrders();
   }, []);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" mt={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const handleDeleteOrder = async (orderId) => {
+    const confirmDelete = window.confirm("Bạn có chắc muốn xóa đơn hàng này?");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "orders", orderId));
+      setSelectedOrder(null);
+      fetchOrders();
+    } catch (error) {
+      console.error("Lỗi khi xóa đơn hàng:", error);
+    }
+  };
+
+  const handleOpenDialog = (order) => {
+    setSelectedOrder(order);
+    setEditValues({
+      buyerName: order.buyerName || "",
+      phone: order.phone || "",
+      address: order.address || "",
+      note: order.note || "",
+    });
+  };
+
+  const handleUpdateOrder = async () => {
+    try {
+      await updateDoc(doc(db, "orders", selectedOrder.id), {
+        buyerName: editValues.buyerName,
+        phone: editValues.phone,
+        address: editValues.address,
+        note: editValues.note,
+      });
+      setSelectedOrder(null);
+      fetchOrders();
+    } catch (error) {
+      console.error("Lỗi khi cập nhật đơn hàng:", error);
+    }
+  };
 
   const filteredOrders = orders.filter((order) => {
     const keyword = searchKeyword.toLowerCase();
@@ -88,6 +135,7 @@ export default function Orders() {
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         Đơn hàng {currentMonth}
       </Typography>
+
       <TextField
         label="Tìm theo tên hoặc số điện thoại"
         variant="outlined"
@@ -105,7 +153,7 @@ export default function Orders() {
               <ListItem
                 alignItems="flex-start"
                 secondaryAction={
-                  <IconButton onClick={() => setSelectedOrder(order)}>
+                  <IconButton onClick={() => handleOpenDialog(order)}>
                     <VisibilityIcon />
                   </IconButton>
                 }
@@ -139,7 +187,7 @@ export default function Orders() {
         </List>
       </Paper>
 
-      {/* 👁️ Dialog chi tiết đơn hàng */}
+      {/* Dialog chi tiết + cập nhật */}
       <Dialog
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
@@ -150,14 +198,49 @@ export default function Orders() {
         <DialogContent dividers>
           {selectedOrder && (
             <>
-              <Typography fontWeight="bold" mb={2}>
-                Khách hàng: {selectedOrder.buyerName} | {selectedOrder.phone}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mb={2}>
-                👤 Nhân viên bán hàng:{" "}
-                <strong>{selectedOrder.staffName}</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+              <TextField
+                label="Tên người mua"
+                fullWidth
+                value={editValues.buyerName}
+                onChange={(e) =>
+                  setEditValues({ ...editValues, buyerName: e.target.value })
+                }
+                margin="normal"
+              />
+              <TextField
+                label="Số điện thoại"
+                fullWidth
+                value={editValues.phone}
+                onChange={(e) =>
+                  setEditValues({ ...editValues, phone: e.target.value })
+                }
+                margin="normal"
+              />
+              <TextField
+                label="Địa chỉ"
+                fullWidth
+                value={editValues.address}
+                onChange={(e) =>
+                  setEditValues({ ...editValues, address: e.target.value })
+                }
+                margin="normal"
+              />
+              <TextField
+                label="Ghi chú"
+                fullWidth
+                value={editValues.note}
+                onChange={(e) =>
+                  setEditValues({ ...editValues, note: e.target.value })
+                }
+                margin="normal"
+              />
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                gutterBottom
+                mt={2}
+              >
                 🕒 Ngày tạo đơn:{" "}
                 {selectedOrder.createdAt?.toDate().toLocaleString("vi-VN", {
                   day: "2-digit",
@@ -167,20 +250,13 @@ export default function Orders() {
                   minute: "2-digit",
                 })}
               </Typography>
-              <Typography>Địa chỉ: {selectedOrder.address}</Typography>
-              <Typography>
-                Số điện thoại: {selectedOrder.phone || "Không có"}
-              </Typography>
-              <Typography>
-                Email: {selectedOrder.email || "Không có"}
-              </Typography>
+
               <Typography>Thanh toán: {selectedOrder.paymentMethod}</Typography>
-              {selectedOrder.note && (
-                <Typography>Ghi chú: {selectedOrder.note}</Typography>
-              )}
+
               <Typography mt={2} fontWeight="bold">
                 Danh sách sản phẩm:
               </Typography>
+
               <Box mt={1}>
                 <Grid container spacing={2}>
                   {selectedOrder.products?.map((p, idx) => (
@@ -215,7 +291,7 @@ export default function Orders() {
                               Giá: {p.price.toLocaleString("vi-VN")}₫
                             </Typography>
                             <Typography>
-                              IMEI: {p.imeiNumber ? p.imeiNumber : "không có"}
+                              IMEI: {p.imeiNumber || "không có"}
                             </Typography>
                           </Box>
                         </Box>
@@ -229,6 +305,20 @@ export default function Orders() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSelectedOrder(null)}>Đóng</Button>
+          <Button
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={() => handleDeleteOrder(selectedOrder.id)}
+          >
+            Xóa đơn
+          </Button>
+          <Button
+            startIcon={<EditIcon />}
+            variant="contained"
+            onClick={handleUpdateOrder}
+          >
+            Cập nhật
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
