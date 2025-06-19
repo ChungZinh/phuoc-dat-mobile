@@ -10,7 +10,11 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase/firebase";
+import {
+  auth,
+  setPersistence,
+  browserSessionPersistence,
+} from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
 export default function Login() {
   const [error, setError] = React.useState("");
@@ -34,6 +38,7 @@ export default function Login() {
       try {
         setError("");
         setSuccess("");
+        await setPersistence(auth, browserSessionPersistence);
         const userCredential = await signInWithEmailAndPassword(
           auth,
           values.email,
