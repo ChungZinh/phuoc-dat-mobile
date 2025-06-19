@@ -63,7 +63,7 @@ export default function Category() {
       await addDoc(categoriesRef, {
         name,
         imageUrl: publicUrl,
-        sold: 0
+        sold: 0,
       });
 
       setName("");
@@ -201,12 +201,18 @@ export default function Category() {
       >
         <DialogTitle>{selectedCategory?.name}</DialogTitle>
         <DialogContent>
-          {categoryProducts.length === 0 ? (
-            <Typography>Không có sản phẩm nào thuộc dòng này.</Typography>
+          {categoryProducts.filter((p) => !p.isSelling).length === 0 ? (
+            <Typography>Không có sản phẩm chưa bán trong dòng này.</Typography>
           ) : (
-            categoryProducts.map((product) => (
-              <ProductListItem item={product} category={true}/>
-            ))
+            categoryProducts
+              .filter((p) => !p.isSelling)
+              .map((product) => (
+                <ProductListItem
+                  key={product.id}
+                  item={product}
+                  category={true}
+                />
+              ))
           )}
         </DialogContent>
       </Dialog>
